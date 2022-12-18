@@ -1,0 +1,96 @@
+#include <Keypad.h>
+#include "AsyncTaskLib.h"
+#include <LiquidCrystal.h>
+
+#define vRed 8
+#define vGreen 10
+#define vBlue 9
+
+const byte ROWS = 4; //four rows
+const byte COLS = 3; //four columns
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+byte rowPins[ROWS] = {40, 4, 3, 2}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {13, 7, 6}; //connect to the column pinouts of the keypad
+
+const char psw[4] = "11111";
+char pswuser[4];
+int idx=0;
+int intentos=0;
+const int rs = 12, en = 11, d4 = 23, d5 = 25, d6 = 24, d7 = 27;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+void contra(void);
+AsyncTask asyncTask1(2000, true, contra);
+
+void setup(){
+  Serial.begin(9600);
+  lcd.begin(16, 2);
+  asyncTask1.Start();
+  pinMode(vRed, OUTPUT);
+  pinMode(vGreen, OUTPUT);
+  pinMode(vBlue, OUTPUT);
+}
+void loop(){
+  if(intentos==0){
+    lcd.clear();
+    lcd.setCursor(3,0);
+    lcd.print("Sistema de");
+    lcd.setCursor(3,1);
+    lcd.print("seguridad!");
+    delay(3000);
+    intentos++;
+  }else if(intentos>3){//Cuando supere los 3 intentos
+    lcd.clear();
+    lcd.setCursor(3,0);
+    lcd.print("Sistema");
+    lcd.setCursor(3,1);
+    lcd.print("Bloqueado!");
+    delay(5000);
+    intentos=0;
+  }else{
+    asyncTask1.Update(asyncTask1);
+  }
+  
+}
+
+void color(int led){
+  digitalWrite(led, HIGH);
+  delay(1000);  
+  digitalWrite(led, LOW);
+}
+
+void contra(void){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Contrasenia:");
+  idx=0;
+  do{
+    char key=keypad.getKey();
+    if(key){
+      lcd.setCursor(idx, 1);
+      lcd.print("*");
+      pswuser[idx++]=key;
+      Serial.println(key);
+    }
+  }while(idx<5);
+  if(strncmp(psw,pswuser,4)==0){
+    Serial.println("Contrasenia correcta");
+    lcd.setCursor(0,1);
+    lcd.print("Correcta");
+    color(vGreen);
+
+  }else{
+    Serial.println("Contrasenia incorrecta");
+    lcd.setCursor(0,1);
+    lcd.print("Incorrecta");
+    color(vBlue);
+    intentos++;
+  }
+  delay(2000);
+}
